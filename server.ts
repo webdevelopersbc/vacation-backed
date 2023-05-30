@@ -12,7 +12,7 @@ const cors = require('cors');
 
 
 const app = express();
-const port = 3000;
+const port = 3003;
 
 // MySQL connection configuration
 const connection = mysql.createConnection({
@@ -313,6 +313,102 @@ app.post('/vacations', upload.single('image'), (req: Request, res: Response) => 
 
 
  
+
+
+// 4 follow unfollow vacation
+app.post('/followers', (req, res) => {
+  const { user_id, vacation_id } = req.query;
+  const { status } = req.body;
+
+  // Check if user_id and vacation_id are provided
+  if (!user_id || !vacation_id) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Both user_id and vacation_id are required as query parameters.'
+    });
+  }
+
+  // Check if status is provided
+  if (!status) {
+    return res.status(400).json({
+      status: 400,
+      message: 'The status field is required in the request body.'
+    });
+  }
+
+  // Validate the status value (ensure it is either 'follow' or 'unfollow')
+  const validStatuses = ['follow', 'unfollow'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Invalid status value. The status field must be either "follow" or "unfollow".'
+    });
+  }
+
+  // Check if the record already exists in the database
+  const selectQuery = ` SELECT * FROM followers WHERE user_id = ? AND vacation_id = ? `;
+  const selectValues = [user_id, vacation_id];
+
+  connection.query(selectQuery, selectValues, (selectErr, selectResults) => {
+    if (selectErr) {
+      console.error('Error retrieving follow/unfollow status:', selectErr);
+      return res.status(500).json({
+        status: 500,
+        message: 'Internal Server Error',
+        error: selectErr
+      });
+    }
+
+    if (selectResults.length > 0) {
+      // Record already exists, update the status
+      const updateQuery = `
+        UPDATE followers SET status = ? WHERE user_id = ? AND vacation_id = ?
+      `;
+      const updateValues = [status, user_id, vacation_id];
+
+      connection.query(updateQuery, updateValues, (updateErr, updateResults) => {
+        if (updateErr) {
+          console.error('Error updating follow/unfollow status:', updateErr);
+          return res.status(500).json({
+            status: 500,
+            message: 'Internal Server Error',
+            error: updateErr
+          });
+        }
+
+        return res.status(200).json({
+          status: 200,
+          message: 'Follow/Unfollow status updated successfully.'
+        });
+      });
+    } else {
+      // Record doesn't exist, insert a new record
+      const insertQuery = `
+        INSERT INTO followers (user_id, vacation_id, status)
+        VALUES (?, ?, ?)
+      `;
+      const insertValues = [user_id, vacation_id, status];
+
+      connection.query(insertQuery, insertValues, (insertErr, insertResults) => {
+        if (insertErr) {
+          console.error('Error storing follow/unfollow status:', insertErr);
+          return res.status(500).json({
+            status: 500,
+            message: 'Internal Server Error',
+            error: insertErr
+          });
+        }
+
+        return res.status(200).json({
+          status: 200,
+          message: 'Follow/Unfollow status stored successfully.'
+        });
+      });
+    }
+  });
+});
+
+
 
 
 
