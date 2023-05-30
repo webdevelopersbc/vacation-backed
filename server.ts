@@ -6,6 +6,8 @@ import validator from 'validator';
 import fs from 'fs';
 import path from 'path'; 
 import multer from 'multer';
+const cors = require('cors');
+ 
  
 
 
@@ -31,6 +33,7 @@ connection.connect((err) => {
 
 // Middleware
 app.use(bodyParser.json());
+app.use(cors());
 
 
 
