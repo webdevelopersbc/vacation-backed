@@ -411,6 +411,84 @@ app.post('/followers', (req, res) => {
 
 
 
+// 5 vacation List
+app.get('/vacations-list', (req, res) => {
+  // Retrieve all vacations from the database
+  connection.query('SELECT * FROM vacation', (err, vacationResults) => {
+    if (err) {
+      console.error('Error retrieving vacations from the database:', err);
+      return res.status(500).json({
+        status: 500,
+        message: 'Internal Server Error',
+        error: err
+      });
+    }
+
+    // Retrieve the followers count for each vacation
+    const getFollowersCount = (vacationId: number) => {
+      return new Promise<number>((resolve, reject) => {
+        connection.query('SELECT COUNT(*) AS count FROM followers WHERE vacation_id = ?', vacationId, (err, followersResult) => {
+          if (err) {
+            reject(err);
+          } else {
+            const followersCount = followersResult[0]?.count || 0;
+            resolve(followersCount);
+          }
+        });
+      });
+    };
+
+    // Retrieve the array of user IDs who follow each vacation
+    const getFollowersArray = (vacationId: number) => {
+      return new Promise<number[]>((resolve, reject) => {
+        connection.query('SELECT user_id FROM followers WHERE status = "follow" AND vacation_id = ?', vacationId, (err, followersResult) => {
+          if (err) {
+            reject(err);
+          } else {
+            const followersArray = followersResult.map((follower: any) => follower.user_id);
+            resolve(followersArray);
+          }
+        });
+      });
+    };
+
+    // Process each vacation and retrieve followers count and followers array
+    const processVacations = async () => {
+      const vacations: any[] = [];
+
+      for (const vacation of vacationResults) {
+        const followersCount = await getFollowersCount(vacation.id);
+        const followersArray = await getFollowersArray(vacation.id);
+
+        vacations.push({
+          ...vacation,
+          followersCount,
+          followersArray
+        });
+      }
+
+      return vacations;
+    };
+
+    // Call the function to process vacations
+    processVacations()
+      .then((vacations) => {
+        return res.status(200).json({
+          status: 200,
+          message: 'Vacation list retrieved successfully',
+          vacations
+        });
+      })
+      .catch((err) => {
+        console.error('Error retrieving followers count or followers array:', err);
+        return res.status(500).json({
+          status: 500,
+          message: 'Internal Server Error',
+          error: err
+        });
+      });
+  });
+});
 
  
 
