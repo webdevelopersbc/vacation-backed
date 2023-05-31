@@ -55,8 +55,6 @@ interface User {
 
 
 // 1 Register
- 
-// Register API
 app.post('/register', (req: Request, res: Response) => {
   const { firstName, lastName, email, password, role } = req.body;
 
@@ -146,15 +144,7 @@ app.post('/register', (req: Request, res: Response) => {
 
 
 
-
-
-
-
-
-
-
-
-
+ 
 
 
 // 2 Login 
@@ -414,7 +404,7 @@ app.post('/followers', (req, res) => {
 // 5 vacation List
 app.get('/vacations-list', (req, res) => {
   // Retrieve all vacations from the database
-  connection.query('SELECT * FROM vacation', (err, vacationResults) => {
+  connection.query('SELECT * FROM vacation WHERE status=1', (err, vacationResults) => {
     if (err) {
       console.error('Error retrieving vacations from the database:', err);
       return res.status(500).json({
@@ -427,7 +417,7 @@ app.get('/vacations-list', (req, res) => {
     // Retrieve the followers count for each vacation
     const getFollowersCount = (vacationId: number) => {
       return new Promise<number>((resolve, reject) => {
-        connection.query('SELECT COUNT(*) AS count FROM followers WHERE vacation_id = ?', vacationId, (err, followersResult) => {
+        connection.query('SELECT COUNT(*) AS count FROM followers WHERE status = "follow" AND vacation_id = ?', vacationId, (err, followersResult) => {
           if (err) {
             reject(err);
           } else {
@@ -491,6 +481,181 @@ app.get('/vacations-list', (req, res) => {
 });
 
  
+
+
+// 6 Delete Vacation 
+
+app.delete('/delete-vacations/:id', (req: Request, res: Response) => {
+  const vacationId = req.params.id;
+
+  // Update the status column of the vacation to 0
+  connection.query('UPDATE vacation SET status = 0 WHERE id = ?', vacationId, (err, results) => {
+    if (err) {
+      console.error('Error updating vacation status:', err);
+      return res.status(500).json({
+        status: 500,
+        message: 'Internal Server Error',
+        error: err
+      });
+    }
+
+    if (results.affectedRows === 0) {
+      // No vacation found with the given ID
+      return res.status(404).json({
+        status: 404,
+        message: 'Vacation not found'
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: 'Vacation deleted successfully'
+    });
+  });
+});
+
+
+
+
+
+
+
+
+
+// 7 Get vacation from id 
+ app.get('/vacations-by-id/:id', (req: Request, res: Response) => {
+  const vacationId = req.params.id;
+
+  // Retrieve the vacation with the given ID from the database
+  connection.query('SELECT * FROM vacation WHERE id = ?', vacationId, (err, results) => {
+    if (err) {
+      console.error('Error retrieving vacation:', err);
+      return res.status(500).json({
+        status: 500,
+        message: 'Internal Server Error',
+        error: err
+      });
+    }
+
+    if (results.length === 0) {
+      // No vacation found with the given ID
+      return res.status(404).json({
+        status: 404,
+        message: 'Vacation not found'
+      });
+    }
+
+    const vacation = results[0];
+
+    return res.status(200).json({
+      status: 200,
+      message: 'Vacation retrieved successfully',
+      data: vacation
+    });
+  });
+});
+
+
+
+ // 8 Update Vacation API
+app.put('/update-vacations/:id', upload.single('image'), (req: Request, res: Response) => {
+  const vacationId = req.params.id;
+  const { destination, description, start_date, end_date, price, image } = req.body;
+
+  // Check if all fields are present
+  if (!destination || !description || !start_date || !end_date || !price) {
+    return res.status(400).json({
+      status: 400,
+      message: 'All fields are mandatory.'
+    });
+  }
+
+  // Validate price range
+  if (price < 0 || price > 10000) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Price must be a positive number not exceeding 10,000.'
+    });
+  }
+
+  // Validate date range
+  const startDate = new Date(start_date);
+  const endDate = new Date(end_date);
+
+  if (endDate < startDate) {
+    return res.status(400).json({
+      status: 400,
+      message: 'Invalid date range. End date cannot be earlier than the start date.'
+    });
+  }
+
+  // Prepare the updated vacation data
+  const updatedVacation: any = {
+    destination,
+    description,
+    start_date,
+    end_date,
+    price
+  };
+
+  // Check if image file is provided and not empty
+  if (req.file && req.file.filename !== '') {
+    const imageFile: Express.Multer.File = req.file;
+    const imageName = imageFile.filename;
+    updatedVacation.image = imageName;
+
+    // Move the uploaded file to the designated folder
+    fs.renameSync(imageFile.path, path.join('images', imageName));
+  }
+
+  // Update the vacation in the database
+  connection.query('UPDATE vacation SET ? WHERE id = ?', [updatedVacation, vacationId], (err, results) => {
+    if (err) {
+      console.error('Error updating vacation:', err);
+      return res.status(500).json({
+        status: 500,
+        message: 'Internal Server Error',
+        error: err
+      });
+    }
+
+    if (results.affectedRows === 0) {
+      // No vacation found with the given ID
+      return res.status(404).json({
+        status: 404,
+        message: 'Vacation not found'
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: 'Vacation updated successfully'
+    });
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Start the server
 app.listen(port, () => {
