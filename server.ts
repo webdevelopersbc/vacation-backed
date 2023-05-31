@@ -12,7 +12,7 @@ const cors = require('cors');
 
 
 const app = express();
-const port = 3003;
+const port = 3004;
 
 // MySQL connection configuration
 const connection = mysql.createConnection({
@@ -34,6 +34,7 @@ connection.connect((err) => {
 // Middleware
 app.use(bodyParser.json());
 app.use(cors());
+app.use('/images', express.static('images'));
 
 
 
